@@ -1,3 +1,6 @@
 [submodule "mfnet"]
 	path = mfnet
 	url = https://github.com/haqishen/MFNet-pytorch.git
+[submodule "heatnet"]
+	path = heatnet
+	url = https://github.com/JohanVer/heatnet.git
