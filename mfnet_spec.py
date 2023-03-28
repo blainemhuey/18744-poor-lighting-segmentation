@@ -86,7 +86,7 @@ class MFNetModified(nn.Module):
         """
         PyTorch Module Functor for Modified MFNet
         :param x: tensor of shape (batch, 4, height, width)
-        :return: tensor of shape (batch, n_class)
+        :return: tensor of shape (batch, n_class, height, width)
         """
 
         # Run data through each layer of each encoder
