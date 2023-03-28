@@ -22,7 +22,7 @@ from datetime import datetime
 def train(model, loader, criterion, optimizer, scheduler, scaler):
     model.train()
 
-    for it, (images, labels, names) in enumerate(loader):
+    for it, (images, labels, names) in tqdm(enumerate(loader)):
         optimizer.zero_grad()
         images = images.cuda()
         labels = labels.cuda()
@@ -65,7 +65,7 @@ def validate(model, loader, criterion):
 def main():
     epochs = 100
     batch_size = 8
-    data_dir = "/home/blaine/Desktop/18744/Project/ir_seg_dataset"
+    data_dir = "../ir_seg_dataset"
 
     train_albumentations = A.Compose([
         A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
