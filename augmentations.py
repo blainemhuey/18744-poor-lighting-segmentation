@@ -82,12 +82,38 @@ class RandomLight(object):
             return image, label
 
 
+class RandomFlare(object):
+
+    def __init__(self, flare_prob, masks_path='./masks/lens-flare/simulated/'):
+        self.masks_path = masks_path
+        self.masks_list = [mask for mask in sorted(os.listdir(masks_path)) if ".png" in mask]
+        self.masks = np.array(
+            [cv2.imread(os.path.join(masks_path, mask), cv2.IMREAD_UNCHANGED) for mask in self.masks_list])
+        self.flare_prob = flare_prob
+
+    def __call__(self, image, label=None, **kwargs):
+        if np.random.rand(1) < self.flare_prob:
+            choice_index = np.random.choice(np.arange(self.masks.shape[0]), 1, replace=False)[0]
+            mask = self.masks[choice_index]
+
+            mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_AREA)
+
+            # add flare by brightening all rgb channels based on grayscale flare brightness
+            flare = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            r, g, b = cv2.split(image[:, :, :3].astype(np.uint16))
+            r = np.minimum(r + flare, 255)
+            g = np.minimum(g + flare, 255)
+            b = np.minimum(b + flare, 255)
+            return np.concatenate((np.stack((r, g, b), axis=2).astype(np.uint8), image[:, :, 3:]), axis=2), label
+        else:
+            return image, label
+
+
 if __name__ == '__main__':
-    images_path = '../customdata/rgb/'
     test_image = cv2.imread("augmented_shadows/000000_augshadow.jpg", cv2.IMREAD_UNCHANGED)
-    cv2.imshow("test_image", test_image)
-    cv2.waitKey(0)
-    augmentation = RandomLight(0.2)
+    # cv2.imshow("test_image", test_image)
+    # cv2.waitKey(0)
+    augmentation = RandomFlare(1.0)
     res = augmentation(test_image, None)
     cv2.imshow("res", res[0])
     cv2.waitKey(0)
