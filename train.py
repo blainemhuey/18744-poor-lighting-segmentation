@@ -4,6 +4,7 @@ https://albumentations.ai/docs/examples/pytorch_semantic_segmentation/
 
 import albumentations as A
 import albumentations.augmentations.functional as F
+import numpy as np
 from albumentations.pytorch import ToTensorV2
 
 import torch
@@ -11,12 +12,13 @@ import torch.nn as nn
 import torch.optim
 from torch.utils.data import Dataset, DataLoader
 
-from augmentations import RandomLight, RandomShadow
+from augmentations import RandomLight, RandomShadow, RandomFlare
 from datasets import FusedDataset
 from mfnet_spec import MFNetModified
 
 from tqdm import tqdm
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 
 def train(model, loader, criterion, optimizer, scheduler, scaler):
@@ -24,6 +26,8 @@ def train(model, loader, criterion, optimizer, scheduler, scaler):
 
     for it, (images, labels, names) in tqdm(enumerate(loader)):
         optimizer.zero_grad()
+        # plt.imshow(images.cpu()[0, :3, :, :].permute((1, 2, 0)))
+        # plt.show()
         images = images.cuda()
         labels = labels.cuda()
 
@@ -67,9 +71,21 @@ def main():
     batch_size = 8
     data_dir = "../ir_seg_dataset"
 
+    train_visual_only_albumentations = A.Compose([
+        A.CLAHE(),
+        A.FancyPCA(0.5),
+        A.ISONoise(),
+        A.RGBShift(),
+    ])
+
     train_albumentations = A.Compose([
         A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
-        # A.RGBShift(r_shift_limit=25, g_shift_limit=25, b_shift_limit=25, p=0.5),
+        A.HorizontalFlip(p=0.5),
+        A.OpticalDistortion(),
+        A.MotionBlur(),
+        A.GridDistortion(),
+        A.Blur(blur_limit=3),
+        A.GaussNoise(9, 0, p=0.5),
         A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
         A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
         ToTensorV2(),
@@ -77,6 +93,8 @@ def main():
     train_transforms = [
         RandomLight(0.5),
         RandomShadow(0.5),
+        RandomFlare(0.25),
+        lambda x, y: (np.concatenate((train_visual_only_albumentations(image=x[:, :, :3])["image"], x[:, :, 3:]), axis=2), y),
         lambda x, y: tuple(map(train_albumentations(image=x, mask=y).get, ["image", "mask"]))
     ]
 
@@ -111,6 +129,7 @@ def main():
         inf_ch=MFNetModified.DEFAULT_INF_CH_SIZE,
         n_class=9
     ).cuda()
+    # model.load_state_dict(torch.load('./weights/model_23_03_28_11_06_59_epoch48.pt'))
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0005)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.95)
