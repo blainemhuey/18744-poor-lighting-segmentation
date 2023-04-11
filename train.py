@@ -10,10 +10,10 @@ from albumentations.pytorch import ToTensorV2
 import torch
 import torch.nn as nn
 import torch.optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 from augmentations import RandomLight, RandomShadow, RandomFlare
-from datasets import FusedDataset
+from datasets import MFNetDataset, HeatNetDataset
 from mfnet_spec import MFNetModified
 
 from tqdm import tqdm
@@ -69,7 +69,8 @@ def validate(model, loader, criterion):
 def main():
     epochs = 100
     batch_size = 8
-    data_dir = "../ir_seg_dataset"
+    mfnet_data_dir = "./datasets/ir_seg_dataset"
+    heatnet_data_dir = "./datasets/heatnet_data"
 
     train_visual_only_albumentations = A.Compose([
         A.CLAHE(),
@@ -106,8 +107,25 @@ def main():
         lambda x, y: tuple(map(val_albumentations(image=x, mask=y).get, ["image", "mask"]))
     ]
 
-    train_dataset = FusedDataset(data_dir, 'train', have_label=True, transform=train_transforms)
-    val_dataset = FusedDataset(data_dir, 'val', have_label=True, transform=val_transforms)
+    # unlabelled, car, person, bike, curve, car_stop, guardrail, color_cone, bump
+    mfnet_label_map = [0, 1, 2, 3, 0, 0, 0, 0, 0]  # Exclude all except car, person, bike
+    train_dataset_mfnet = MFNetDataset(mfnet_data_dir, 'train', have_label=True, transform=train_transforms,
+                                       label_map=mfnet_label_map)
+    val_dataset_mfnet = MFNetDataset(mfnet_data_dir, 'val', have_label=True, transform=val_transforms,
+                                     label_map=mfnet_label_map)
+
+    # unlabelled, road, sidewalk, building, curb, fence, pole, vegetation, terrain, sky, person, car, bicycle
+    heatnet_label_map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 3]  # Exclude all except car, person, bike
+    train_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'train', have_label=True, transform=train_transforms,
+                                           label_map=heatnet_label_map)
+    val_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'val', have_label=True, transform=val_transforms,
+                                         label_map=heatnet_label_map)
+
+    # train_dataset_custom =
+    # val_dataset_custom =
+
+    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_heatnet))
+    val_dataset = ConcatDataset((val_dataset_mfnet, val_dataset_heatnet))
 
     train_loader = DataLoader(
         dataset=train_dataset,

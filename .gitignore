@@ -130,3 +130,6 @@ dmypy.json
 
 # PyTorch settings
 .idea/
+
+# Ignore datasets
+datasets/
