@@ -6,6 +6,10 @@ from torch.utils.data.dataset import Dataset
 
 import numpy as np
 from PIL import Image
+import cv2
+
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class MFNetDataset(Dataset):
@@ -31,7 +35,7 @@ class MFNetDataset(Dataset):
     def read_image(self, name, folder):
         file_path = os.path.join(self.data_dir, '%s/%s.png' % (folder, name))
         image_pil = Image.open(file_path)
-        image_pil.load()
+        #image_pil.load()
         image = np.asarray(image_pil).copy()  # (w,h,c)
         image_pil.close()
         return image
@@ -45,8 +49,8 @@ class MFNetDataset(Dataset):
             image, label = func(image, label)
 
         if self.label_map is not None:
-            label = np.array(self.label_map)[label]
-        return image, label.long(), name
+            label =  torch.tensor(np.array(self.label_map)[label])
+        return image, label.long()
 
     def get_test_item(self, index):
         name = self.names[index]
@@ -54,7 +58,7 @@ class MFNetDataset(Dataset):
         image = np.asarray(Image.fromarray(image).resize((self.input_w, self.input_h)), dtype=np.float32).transpose(
             (2, 0, 1)) / 255
 
-        return torch.tensor(image), name
+        return torch.tensor(image)
 
     def __getitem__(self, index):
         if self.is_train is True:
@@ -113,18 +117,21 @@ class HeatNetDataset(Dataset):
         return image
 
     def get_train_item(self, rgb, ir, label):
-        rgb_image = self.read_image(os.path.join(self.data_dir, rgb))
-        ir_image = self.read_image(os.path.join(self.data_dir, ir))
-        label_image = self.read_image(os.path.join(self.data_dir, label))
+        rgb_image = self.read_image(rgb)
+        ir_image = self.read_image(ir)
+        label_image = self.read_image(label)
+        label_image = cv2.resize(label_image, (rgb_image.shape[1], rgb_image.shape[0]), interpolation=cv2.INTER_NEAREST)
         ir_array = np.asarray(ir_image)[:480, 640:1280]
         rgb_array = np.asarray(rgb_image)[:480, 640:1280, :]
+        #print(label_image.shape)
+        label_array = np.asarray(label_image)[:480, 640:1280]
         flir_array = (self.rescale_ir(ir_array) * 255).astype('uint8')
         merged_array = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1], rgb_array[:, :, 2], flir_array[:, :]), axis=2)
-        return merged_array, np.asarray(label_image)
+        return merged_array, label_array
 
     def get_test_item(self, rgb, ir):
-        rgb_image = self.read_image(os.path.join(self.data_dir, rgb))
-        ir_image = self.read_image(os.path.join(self.data_dir, ir))
+        rgb_image = self.read_image(rgb)
+        ir_image = self.read_image(ir)
         ir_array = np.asarray(ir_image)[:480, 640:1280]
         rgb_array = np.asarray(rgb_image)[:480, 640:1280, :]
         flir_array = (self.rescale_ir(ir_array) * 255).astype('uint8')
@@ -137,7 +144,7 @@ class HeatNetDataset(Dataset):
             for func in self.transform:
                 image, label = func(image, label)
             if self.label_map is not None:
-                label = np.array(self.label_map)[label]
+                label = torch.tensor(np.array(self.label_map)[label])
             return image, label.long()
         else:
             image = self.get_train_item(*self.names[index])

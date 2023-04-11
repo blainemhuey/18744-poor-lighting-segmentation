@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 def train(model, loader, criterion, optimizer, scheduler, scaler):
     model.train()
 
-    for it, (images, labels, names) in tqdm(enumerate(loader)):
+    for it, (images, labels) in tqdm(enumerate(loader)):
         optimizer.zero_grad()
         # plt.imshow(images.cpu()[0, :3, :, :].permute((1, 2, 0)))
         # plt.show()
@@ -49,7 +49,7 @@ def validate(model, loader, criterion):
     total_correct = 0
     total_elements = 0
     with torch.no_grad():
-        for it, (images, labels, names) in tqdm(enumerate(loader)):
+        for it, (images, labels) in tqdm(enumerate(loader)):
             images = images.cuda()
             labels = labels.cuda()
 
@@ -70,7 +70,7 @@ def main():
     epochs = 100
     batch_size = 8
     mfnet_data_dir = "./datasets/ir_seg_dataset"
-    heatnet_data_dir = "./datasets/heatnet_data"
+    heatnet_data_dir = "./datasets/heatnet_data/train"
 
     train_visual_only_albumentations = A.Compose([
         A.CLAHE(),
@@ -130,7 +130,7 @@ def main():
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
-        num_workers=4,
+        num_workers=7,
         shuffle=True,
         drop_last=True
     )
@@ -145,7 +145,7 @@ def main():
     model = MFNetModified(
         rgb_ch=MFNetModified.DEFAULT_RGB_CH_SIZE,
         inf_ch=MFNetModified.DEFAULT_INF_CH_SIZE,
-        n_class=9
+        n_class=4
     ).cuda()
     # model.load_state_dict(torch.load('./weights/model_23_03_28_11_06_59_epoch48.pt'))
 
