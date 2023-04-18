@@ -34,8 +34,27 @@ unzip test.zip
 ```
 
 ### Our Dataset
-```commandline
 
+Make a custom data folder within the datasets folder
+```commandline
+mkdir custom_data/
+cd custom_data/
 ```
+
+Download the [segmentation export](https://app.hasty.ai/projects/26cac049-ecb7-48f1-8776-201c38e81aab/edit/export)
+```commandline
+mkdir labels/
+cd labels/
+unzip 'name of segmentation export file'
+```
+
+Download our custom dataset and run the merge_data.py script in the datacapture folder
+```commandline
+cd foler_with_custom_dataset
+mkdir merged
+python merge_data.py
+```
+
+Finally, copy the merged output folder contents into a folder named rgba/ in the custom_data/ directory
 
 ## How to Run
