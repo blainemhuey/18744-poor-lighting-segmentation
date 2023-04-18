@@ -1,3 +1,5 @@
+
+
 import numpy as np
 import cv2
 import os
@@ -134,4 +136,22 @@ def add_flare():
 
 
 
-add_flare()
+# Generate boolean masks for flares for labeling
+def create_flare_booleans():
+    flares_path = 'masks/lens-flare/'
+    bools_path = 'masks/flare_booleans/'
+    flares_list = [mask for mask in sorted(os.listdir(flares_path)) if ".png" in mask]
+    for flare_ind, flare in enumerate(flares_list):
+        # print(flare)
+        bools_name = flare[:-4] + '_augbool.jpg'
+        flare = cv2.imread(flares_path + flare, cv2.IMREAD_UNCHANGED)
+        flare = cv2.cvtColor(flare, cv2.COLOR_BGR2GRAY)
+        # apply Otsu's automatic thresholding
+        (T, thresh) = cv2.threshold(flare, 0, 255,
+            cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        T2, thresh2 = cv2.threshold(flare,T + 130,255,cv2.THRESH_BINARY)
+        cv2.imwrite(os.path.join(bools_path,bools_name), thresh2)
+    print("done!")
+
+# add_flare()
+create_flare_booleans()
