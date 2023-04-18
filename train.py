@@ -26,8 +26,11 @@ def train(model, loader, criterion, optimizer, scheduler, scaler):
 
     for it, (images, labels) in tqdm(enumerate(loader)):
         optimizer.zero_grad()
-        # plt.imshow(images.cpu()[0, :3, :, :].permute((1, 2, 0)))
-        # plt.show()
+        # for i in range(images.shape[0]):
+        #     plt.imshow(images.cpu()[i, :3, :, :].permute((1, 2, 0)))
+        #     plt.show()
+        #     plt.imshow(images.cpu()[i, 3:, :, :].permute((1, 2, 0)))
+        #     plt.show()
         images = images.cuda()
         labels = labels.cuda()
 
@@ -116,11 +119,11 @@ def main():
                                      label_map=mfnet_label_map)
 
     # unlabelled, road, sidewalk, building, curb, fence, pole, vegetation, terrain, sky, person, car, bicycle
-    heatnet_label_map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 3]  # Exclude all except car, person, bike
-    train_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'train', have_label=True, transform=train_transforms,
-                                           label_map=heatnet_label_map)
-    val_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'val', have_label=True, transform=val_transforms,
-                                         label_map=heatnet_label_map)
+    # heatnet_label_map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 3]  # Exclude all except car, person, bike
+    # train_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'train', have_label=True, transform=train_transforms,
+    #                                        label_map=heatnet_label_map)
+    # val_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'val', have_label=True, transform=val_transforms,
+    #                                      label_map=heatnet_label_map)
 
     # unlabelled, car, person, lights, bikes
     custom_label_map = [0, 1, 2, 0, 3]  # Exclude all except car, person, bike

@@ -169,8 +169,8 @@ class CustomDataset(Dataset):
 
         data_path = Path(data_dir)
         if have_label:
-            raw_data = [(data_path / "rgba" / name, data_path / "labels" / "Default" / name)
-                        for name in (data_path / "rgba").glob("*") if (data_path / "labels" / "Default" / name).exists()]
+            raw_data = [(name, data_path / "labels" / "Default" / name.name)
+                        for name in sorted((data_path / "rgba").glob("*")) if (data_path / "labels" / "Default" / name.name).exists()]
             if split == 'train':
                 self.data = raw_data[:int(len(raw_data)*0.8)]
             else:
