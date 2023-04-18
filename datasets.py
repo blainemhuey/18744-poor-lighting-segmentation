@@ -1,5 +1,6 @@
 import os
 from glob import glob
+from pathlib import Path
 
 import torch
 from torch.utils.data.dataset import Dataset
@@ -73,6 +74,9 @@ class MFNetDataset(Dataset):
 class HeatNetDataset(Dataset):
     def __init__(self, data_dir, split, have_label, input_h=480, input_w=640, transform=None, label_map=None):
         super(HeatNetDataset, self).__init__()
+
+        if transform is None:
+            transform = []
 
         fl_rgb_files = glob(os.path.join(data_dir, '*/*/fl_rgb/*.png'))
         fl_label_files = glob(os.path.join(data_dir, '*/*/fl_rgb_labels/*.png'))
@@ -151,6 +155,65 @@ class HeatNetDataset(Dataset):
             for func in self.transform:
                 image = func(image)
             return image
+
+    def __len__(self):
+        return self.n_data
+
+
+class CustomDataset(Dataset):
+    def __init__(self, data_dir, split, have_label, transform=None, label_map=None):
+        super().__init__()
+
+        if transform is None:
+            transform = []
+
+        data_path = Path(data_dir)
+        if have_label:
+            raw_data = [(data_path / "rgba" / name, data_path / "labels" / "Default" / name)
+                        for name in (data_path / "rgba").glob("*") if (data_path / "labels" / "Default" / name).exists()]
+            if split == 'train':
+                self.data = raw_data[:int(len(raw_data)*0.8)]
+            else:
+                self.data = raw_data[int(len(raw_data)*0.8):]
+        else:
+            self.data = list((data_path / "rgba").glob("*"))
+            self.n_data = len(self.data)
+
+        self.data_dir = data_dir
+        self.transform = transform
+        self.is_train = have_label
+        self.label_map = label_map
+
+    def read_image(self, path):
+        image_pil = Image.open(path)
+        image_pil.load()
+        image = np.asarray(image_pil).copy()  # (w,h,c)
+        image_pil.close()
+        return image
+
+    def get_train_item(self, rgba, label):
+        image = self.read_image(rgba)
+        label = self.read_image(label)
+
+        for func in self.transform:
+            image, label = func(image, label)
+
+        if self.label_map is not None:
+            label =  torch.tensor(np.array(self.label_map)[label])
+        return image.float(), label.long()
+
+    def get_test_item(self, rgba):
+        image = self.read_image(rgba)
+        image = np.asarray(Image.fromarray(image).resize((self.input_w, self.input_h)), dtype=np.float32).transpose(
+            (2, 0, 1)) / 255
+
+        return torch.tensor(image)
+
+    def __getitem__(self, names):
+        if self.is_train:
+            return self.get_train_item(*names)
+        else:
+            return self.get_test_item(names)
 
     def __len__(self):
         return self.n_data

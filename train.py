@@ -13,7 +13,7 @@ import torch.optim
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 from augmentations import RandomLight, RandomShadow, RandomFlare
-from datasets import MFNetDataset, HeatNetDataset
+from datasets import MFNetDataset, HeatNetDataset, CustomDataset
 from mfnet_spec import MFNetModified
 
 from tqdm import tqdm
@@ -71,6 +71,7 @@ def main():
     batch_size = 8
     mfnet_data_dir = "./datasets/ir_seg_dataset"
     heatnet_data_dir = "./datasets/heatnet_data/train"
+    custom_data_dir = "./datasets/custom_data"
 
     train_visual_only_albumentations = A.Compose([
         A.CLAHE(),
@@ -121,11 +122,15 @@ def main():
     val_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'val', have_label=True, transform=val_transforms,
                                          label_map=heatnet_label_map)
 
-    # train_dataset_custom =
-    # val_dataset_custom =
+    # unlabelled, car, person, lights, bikes
+    custom_label_map = [0, 1, 2, 0, 3]  # Exclude all except car, person, bike
+    train_dataset_custom = CustomDataset(custom_data_dir, 'train', have_label=True, transform=train_transforms,
+                                         label_map=custom_label_map)
+    val_dataset_custom = CustomDataset(custom_data_dir, 'val', have_label=True, transform=val_transforms,
+                                       label_map=custom_label_map)
 
-    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_heatnet))
-    val_dataset = ConcatDataset((val_dataset_mfnet, val_dataset_heatnet))
+    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom))
+    val_dataset = ConcatDataset((val_dataset_mfnet,))
 
     train_loader = DataLoader(
         dataset=train_dataset,
