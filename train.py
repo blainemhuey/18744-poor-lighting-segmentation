@@ -129,6 +129,7 @@ def main():
     val_dataset_custom = CustomDataset(custom_data_dir, 'val', have_label=True, transform=val_transforms,
                                        label_map=custom_label_map)
 
+    # train_dataset_heatnet = torch.utils.data.Subset(train_dataset_heatnet, np.arange(1000))
     train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom))
     val_dataset = ConcatDataset((val_dataset_mfnet,))
 
@@ -144,7 +145,7 @@ def main():
         batch_size=batch_size,
         shuffle=False,
         drop_last=True,
-        num_workers=2
+        num_workers=7
     )
 
     model = MFNetModified(

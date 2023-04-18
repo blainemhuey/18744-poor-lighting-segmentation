@@ -175,6 +175,7 @@ class CustomDataset(Dataset):
                 self.data = raw_data[:int(len(raw_data)*0.8)]
             else:
                 self.data = raw_data[int(len(raw_data)*0.8):]
+            self.n_data = len(self.data)
         else:
             self.data = list((data_path / "rgba").glob("*"))
             self.n_data = len(self.data)
@@ -209,11 +210,11 @@ class CustomDataset(Dataset):
 
         return torch.tensor(image)
 
-    def __getitem__(self, names):
+    def __getitem__(self, index):
         if self.is_train:
-            return self.get_train_item(*names)
+            return self.get_train_item(*self.data[index])
         else:
-            return self.get_test_item(names)
+            return self.get_test_item(*self.data[index])
 
     def __len__(self):
         return self.n_data
