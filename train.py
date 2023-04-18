@@ -27,9 +27,9 @@ def train(model, loader, criterion, optimizer, scheduler, scaler):
     for it, (images, labels) in tqdm(enumerate(loader)):
         optimizer.zero_grad()
         # for i in range(images.shape[0]):
-        #     plt.imshow(images.cpu()[i, :3, :, :].permute((1, 2, 0)))
+        #     plt.imshow(images.cpu()[i, :3, :, :].permute((1, 2, 0))/255)
         #     plt.show()
-        #     plt.imshow(images.cpu()[i, 3:, :, :].permute((1, 2, 0)))
+        #     plt.imshow(images.cpu()[i, 3:, :, :].permute((1, 2, 0))/255)
         #     plt.show()
         images = images.cuda()
         labels = labels.cuda()
@@ -84,15 +84,15 @@ def main():
     ])
 
     train_albumentations = A.Compose([
-        A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
+        A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
         A.HorizontalFlip(p=0.5),
-        A.OpticalDistortion(),
+        # A.OpticalDistortion(),
         A.MotionBlur(),
-        A.GridDistortion(),
+        # A.GridDistortion(),
         A.Blur(blur_limit=3),
         A.GaussNoise(9, 0, p=0.5),
-        A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
-        A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        # A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
         ToTensorV2(),
     ])
     train_transforms = [
@@ -104,7 +104,7 @@ def main():
     ]
 
     val_albumentations = A.Compose([
-        A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
+        # A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
         ToTensorV2()
     ])
     val_transforms = [
