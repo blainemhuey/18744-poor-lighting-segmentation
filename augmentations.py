@@ -10,7 +10,7 @@ import os
 
 class RandomShadow(object):
 
-    def __init__(self, masking_prob, masks_path='./masks/'):
+    def __init__(self, masking_prob, masks_path='./augmented_shadows/'):
         self.masks_path = masks_path
         self.masks_list = [mask for mask in sorted(os.listdir(masks_path)) if ".jpg" in mask]
         self.masks = np.array([cv2.imread(os.path.join(masks_path, mask), cv2.IMREAD_UNCHANGED) for mask in self.masks_list])
@@ -50,7 +50,7 @@ class RandomShadow(object):
 
 class RandomLight(object):
 
-    def __init__(self, masking_prob, masks_path='./masks/'):
+    def __init__(self, masking_prob, masks_path='./masks/light-masks/'):
         self.masks_path = masks_path
         self.masks_list = [mask for mask in sorted(os.listdir(masks_path)) if ".jpg" in mask]
         self.masks = np.array([cv2.imread(os.path.join(masks_path, mask), cv2.IMREAD_UNCHANGED) for mask in self.masks_list])
@@ -84,7 +84,7 @@ class RandomLight(object):
 
 class RandomFlare(object):
 
-    def __init__(self, flare_prob, masks_path='./masks/lens-flare/simulated/'):
+    def __init__(self, flare_prob, masks_path='./masks/lens-flare/'):
         self.masks_path = masks_path
         self.masks_list = [mask for mask in sorted(os.listdir(masks_path)) if ".png" in mask]
         self.masks = np.array(
