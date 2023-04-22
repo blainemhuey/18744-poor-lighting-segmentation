@@ -58,3 +58,16 @@ python merge_data.py
 Finally, copy the merged output folder contents into a folder named rgba/ in the custom_data/ directory
 
 ## How to Run
+
+### How to Train
+
+After installing all of the pip dependencies specified in the requirements.txt file, training can be run using:
+```commandline
+python train.py
+```
+
+### How to Demo
+
+```commandline
+TODO create live demo script
+```
