@@ -46,11 +46,12 @@ class MFNetDataset(Dataset):
         image = self.read_image(name, 'images')
         label = self.read_image(name, 'labels')
 
+        if self.label_map is not None:
+            label = np.array(self.label_map)[label]
+
         for func in self.transform:
             image, label = func(image, label)
 
-        if self.label_map is not None:
-            label =  torch.tensor(np.array(self.label_map)[label])
         return image.float(), label.long()
 
     def get_test_item(self, index):
@@ -145,10 +146,10 @@ class HeatNetDataset(Dataset):
     def __getitem__(self, index):
         if self.is_train:
             image, label = self.get_train_item(*self.names[index])
+            if self.label_map is not None:
+                label = np.array(self.label_map)[label]
             for func in self.transform:
                 image, label = func(image, label)
-            if self.label_map is not None:
-                label = torch.tensor(np.array(self.label_map)[label])
             return image.float(), label.long()
         else:
             image = self.get_train_item(*self.names[index])
@@ -196,11 +197,12 @@ class CustomDataset(Dataset):
         image = self.read_image(rgba)
         label = self.read_image(label)
 
+        if self.label_map is not None:
+            label = np.array(self.label_map)[label]
+
         for func in self.transform:
             image, label = func(image, label)
 
-        if self.label_map is not None:
-            label =  torch.tensor(np.array(self.label_map)[label])
         return image.float(), label.long()
 
     def get_test_item(self, rgba):

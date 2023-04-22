@@ -84,12 +84,20 @@ class RandomLight(object):
 
 class RandomFlare(object):
 
-    def __init__(self, flare_prob, masks_path='./masks/lens-flare/'):
+    def __init__(self, flare_prob, masks_path='./masks/lens-flare/', label_num=-1):
         self.masks_path = masks_path
         self.masks_list = [mask for mask in sorted(os.listdir(masks_path)) if ".png" in mask]
         self.masks = np.array(
             [cv2.imread(os.path.join(masks_path, mask), cv2.IMREAD_UNCHANGED) for mask in self.masks_list])
         self.flare_prob = flare_prob
+        self.label_num = label_num
+
+    @staticmethod
+    def calculate_flare_mask(flare):
+        (T, thresh) = cv2.threshold(flare, 0, 255,
+            cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        T2, thresh2 = cv2.threshold(flare, T + 130, 255, cv2.THRESH_BINARY)
+        return thresh2
 
     def __call__(self, image, label=None, **kwargs):
         if np.random.rand(1) < self.flare_prob:
@@ -104,6 +112,9 @@ class RandomFlare(object):
             r = np.minimum(r + flare, 255)
             g = np.minimum(g + flare, 255)
             b = np.minimum(b + flare, 255)
+            if self.label_num >= 0:
+                mask = self.calculate_flare_mask(flare)
+                label[mask] = self.label_num
             return np.concatenate((np.stack((r, g, b), axis=2).astype(np.uint8), image[:, :, 3:]), axis=2), label
         else:
             return image, label

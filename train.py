@@ -98,7 +98,7 @@ def main():
     train_transforms = [
         RandomLight(0.5),
         RandomShadow(0.5),
-        RandomFlare(0.25),
+        RandomFlare(0.25, label_num=4),
         lambda x, y: (np.concatenate((train_visual_only_albumentations(image=x[:, :, :3])["image"], x[:, :, 3:]), axis=2), y),
         lambda x, y: tuple(map(train_albumentations(image=x, mask=y).get, ["image", "mask"]))
     ]
@@ -126,7 +126,7 @@ def main():
     #                                      label_map=heatnet_label_map)
 
     # unlabelled, car, person, lights, bikes
-    custom_label_map = [0, 1, 2, 0, 3]  # Exclude all except car, person, bike
+    custom_label_map = [0, 1, 2, 4, 3]  # Exclude all except car, person, bike
     train_dataset_custom = CustomDataset(custom_data_dir, 'train', have_label=True, transform=train_transforms,
                                          label_map=custom_label_map)
     val_dataset_custom = CustomDataset(custom_data_dir, 'val', have_label=True, transform=val_transforms,
@@ -154,7 +154,7 @@ def main():
     model = MFNetModified(
         rgb_ch=MFNetModified.DEFAULT_RGB_CH_SIZE,
         inf_ch=MFNetModified.DEFAULT_INF_CH_SIZE,
-        n_class=4
+        n_class=5
     ).cuda()
     # model.load_state_dict(torch.load('./weights/model_23_03_28_11_06_59_epoch48.pt'))
 
