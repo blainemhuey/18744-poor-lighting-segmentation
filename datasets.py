@@ -22,7 +22,7 @@ class MFNetDataset(Dataset):
         assert split in ['train', 'val', 'test'], 'split must be "train"|"val"|"test"'
 
         with open(os.path.join(data_dir, split + '.txt'), 'r') as f:
-            self.names = sorted([name.strip() for name in f.readlines()])
+            self.names = sorted([name.strip() for name in f.readlines() if "flip" not in name])
 
         self.data_dir = data_dir
         self.split = split
@@ -52,7 +52,7 @@ class MFNetDataset(Dataset):
         for func in self.transform:
             image, label = func(image, label)
 
-        return image.float(), label.long()
+        return image.float() / 255, label.long()
 
     def get_test_item(self, index):
         name = self.names[index]
@@ -150,12 +150,12 @@ class HeatNetDataset(Dataset):
                 label = np.array(self.label_map)[label]
             for func in self.transform:
                 image, label = func(image, label)
-            return image.float(), label.long()
+            return image.float() / 255, label.long()
         else:
             image = self.get_train_item(*self.names[index])
             for func in self.transform:
                 image = func(image)
-            return image
+            return image.float() / 255
 
     def __len__(self):
         return self.n_data
@@ -203,7 +203,7 @@ class CustomDataset(Dataset):
         for func in self.transform:
             image, label = func(image, label)
 
-        return image.float(), label.long()
+        return image.float() / 255, label.long()
 
     def get_test_item(self, rgba):
         image = self.read_image(rgba)

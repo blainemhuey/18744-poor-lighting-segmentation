@@ -15,10 +15,13 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from augmentations import RandomLight, RandomShadow, RandomFlare
 from datasets import MFNetDataset, HeatNetDataset, CustomDataset
 from mfnet_spec import MFNetModified
+from mfnet.util.augmentation import RandomCrop
+from helpers import calculate_result
 
 from tqdm import tqdm
 from datetime import datetime
 import matplotlib.pyplot as plt
+import cv2
 
 
 def train(model, loader, criterion, optimizer, scheduler, scaler):
@@ -45,12 +48,13 @@ def train(model, loader, criterion, optimizer, scheduler, scaler):
     scheduler.step()
 
 
-def validate(model, loader, criterion):
+def validate(model, loader, criterion, n_class):
     model.eval()
 
     total_loss = 0
     total_correct = 0
     total_elements = 0
+    cf = np.zeros((n_class, n_class))
     with torch.no_grad():
         for it, (images, labels) in tqdm(enumerate(loader)):
             images = images.cuda()
@@ -64,34 +68,42 @@ def validate(model, loader, criterion):
             total_correct += int(((logits.argmax(1) == labels)*(labels != -1)).sum())
             total_elements += int(labels.numel() - (labels == -1).sum())
 
+            predictions = logits.argmax(1)
+            for gtcid in range(n_class):
+                for pcid in range(n_class):
+                    gt_mask      = labels == gtcid
+                    pred_mask    = predictions == pcid
+                    intersection = gt_mask * pred_mask
+                    cf[gtcid, pcid] += int(intersection.sum())
+
+    overall_acc, acc, IoU = calculate_result(cf)
     val_loss = float(total_loss / len(loader))
     val_acc = 100 * total_correct / total_elements
-    return val_loss, val_acc
+    return val_loss, val_acc, acc, IoU
 
 
-def main():
-    epochs = 100
-    batch_size = 8
+def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
     mfnet_data_dir = "./datasets/ir_seg_dataset"
     heatnet_data_dir = "./datasets/heatnet_data/train"
     custom_data_dir = "./datasets/custom_data"
 
     train_visual_only_albumentations = A.Compose([
-        A.CLAHE(),
-        A.FancyPCA(0.5),
-        A.ISONoise(),
-        A.RGBShift(),
+        # A.CLAHE(),
+        # A.FancyPCA(0.5),
+        # A.ISONoise(),
+        # A.RGBShift(),
     ])
 
     train_albumentations = A.Compose([
-        A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
+        # A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
         A.HorizontalFlip(p=0.5),
         # A.OpticalDistortion(),
-        A.MotionBlur(),
+        # A.MotionBlur(),
         # A.GridDistortion(),
-        A.Blur(blur_limit=3),
-        A.GaussNoise(9, 0, p=0.5),
-        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        # A.Blur(blur_limit=3),
+        # A.GaussNoise(9, 0, p=0.5),
+        # A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        A.Resize(480, 640),
         # A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
         ToTensorV2(),
     ])
@@ -100,6 +112,7 @@ def main():
         RandomShadow(0.5),
         RandomFlare(0.25, label_num=4),
         lambda x, y: (np.concatenate((train_visual_only_albumentations(image=x[:, :, :3])["image"], x[:, :, 3:]), axis=2), y),
+        RandomCrop(),
         lambda x, y: tuple(map(train_albumentations(image=x, mask=y).get, ["image", "mask"]))
     ]
 
@@ -119,7 +132,7 @@ def main():
                                      label_map=mfnet_label_map)
 
     # unlabelled, road, sidewalk, building, curb, fence, pole, vegetation, terrain, sky, person, car, bicycle
-    # heatnet_label_map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 3]  # Exclude all except car, person, bike
+    heatnet_label_map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 3]  # Exclude all except car, person, bike
     # train_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'train', have_label=True, transform=train_transforms,
     #                                        label_map=heatnet_label_map)
     # val_dataset_heatnet = HeatNetDataset(heatnet_data_dir, 'val', have_label=True, transform=val_transforms,
@@ -134,7 +147,7 @@ def main():
 
     # train_dataset_heatnet = torch.utils.data.Subset(train_dataset_heatnet, np.arange(1000))
     train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom))
-    val_dataset = ConcatDataset((val_dataset_mfnet,))
+    val_dataset = ConcatDataset((val_dataset_mfnet, val_dataset_custom))
 
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -153,8 +166,8 @@ def main():
 
     model = MFNetModified(
         rgb_ch=MFNetModified.DEFAULT_RGB_CH_SIZE,
-        inf_ch=MFNetModified.DEFAULT_INF_CH_SIZE,
-        n_class=5
+        inf_ch=np.rint(np.array(MFNetModified.DEFAULT_INF_CH_SIZE)//2*pipeline_scalars[1]).astype(int)*2,
+        n_class=n_class
     ).cuda()
     # model.load_state_dict(torch.load('./weights/model_23_03_28_11_06_59_epoch48.pt'))
 
@@ -165,11 +178,14 @@ def main():
 
     for epoch in range(epochs):
         train(model, train_loader, criterion, optimizer, scheduler, scaler)
-        val_loss, val_acc = validate(model, val_loader, criterion)
-        print(f"Epoch {epoch+1}: Loss {val_loss}, Accuracy {val_acc}")
+        val_loss, val_acc, acc, iou = validate(model, val_loader, criterion, n_class)
+        print(f"Epoch {epoch+1}: Loss {val_loss}, Accuracy {val_acc}, Class Acc {acc}, IoU {iou}")
         torch.save(model.state_dict(),
                    datetime.now().strftime(f"./weights/model_%y_%m_%d_%H_%M_%S_epoch{epoch + 1}.pt"))
 
 
 if __name__ == '__main__':
+    # for s in np.linspace(0, 1, 5)[1:]:
+    #     scalar = (1.0, 1+s)
+    #     main(pipeline_scalars=scalar)
     main()
