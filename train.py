@@ -82,7 +82,6 @@ def validate(model, loader, criterion, n_class):
     return val_loss, val_acc, acc, IoU
 
 
-
 def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
     mfnet_data_dir = "./datasets/ir_seg_dataset"
     heatnet_data_dir = "./datasets/heatnet_data/train"
@@ -193,8 +192,8 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
                    datetime.now().strftime(f"./weights/model_%y_%m_%d_%H_%M_%S_epoch{epoch + 1}.pt"))
     
     # Final Testing Loop
-    test_loss, test_acc, test_ac, test_iou = validate(model, test_loader, criterion, n_class)
-    print(f"Final: Loss {test_loss}, Accuracy {test_acc}, Class Acc {test_acc}, IoU {test_iou}")
+    test_loss, test_acc, test_acs, test_iou = validate(model, test_loader, criterion, n_class)
+    print(f"Final: Loss {test_loss}, Accuracy {test_acc}, Class Acc {test_acs}, IoU {test_iou}")
 
 
 if __name__ == '__main__':
