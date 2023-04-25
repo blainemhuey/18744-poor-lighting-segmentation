@@ -82,35 +82,36 @@ def validate(model, loader, criterion, n_class):
     return val_loss, val_acc, acc, IoU
 
 
+
 def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
     mfnet_data_dir = "./datasets/ir_seg_dataset"
     heatnet_data_dir = "./datasets/heatnet_data/train"
     custom_data_dir = "./datasets/custom_data"
 
     train_visual_only_albumentations = A.Compose([
-        # A.CLAHE(),
-        # A.FancyPCA(0.5),
-        # A.ISONoise(),
+        A.CLAHE(),
+        A.FancyPCA(),
+        A.ISONoise(),
         # A.RGBShift(),
     ])
 
     train_albumentations = A.Compose([
-        # A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
+        A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
         A.HorizontalFlip(p=0.5),
         # A.OpticalDistortion(),
         # A.MotionBlur(),
         # A.GridDistortion(),
         # A.Blur(blur_limit=3),
         # A.GaussNoise(9, 0, p=0.5),
-        # A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
         A.Resize(480, 640),
         # A.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.25, 0.25, 0.25, 0.25)),
         ToTensorV2(),
     ])
     train_transforms = [
-        RandomLight(0.5),
-        RandomShadow(0.5),
-        RandomFlare(0.25, label_num=4),
+        RandomLight(0.05),
+        RandomShadow(0.05),
+        RandomFlare(0.025, label_num=4),
         lambda x, y: (np.concatenate((train_visual_only_albumentations(image=x[:, :, :3])["image"], x[:, :, 3:]), axis=2), y),
         RandomCrop(),
         lambda x, y: tuple(map(train_albumentations(image=x, mask=y).get, ["image", "mask"]))
@@ -146,22 +147,30 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
                                        label_map=custom_label_map)
 
     # train_dataset_heatnet = torch.utils.data.Subset(train_dataset_heatnet, np.arange(1000))
-    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom))
-    val_dataset = ConcatDataset((val_dataset_mfnet, val_dataset_custom))
+    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom)) #
+    val_dataset = ConcatDataset((val_dataset_custom, )) #val_dataset_mfnet
+    test_dataset = ConcatDataset((val_dataset_custom, ))
 
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
-        num_workers=7,
         shuffle=True,
-        drop_last=True
+        drop_last=True,
+        num_workers=7,
     )
     val_loader = DataLoader(
         dataset=val_dataset,
         batch_size=batch_size,
         shuffle=False,
         drop_last=True,
-        num_workers=7
+        num_workers=7,
+    )
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=7,
     )
 
     model = MFNetModified(
@@ -182,6 +191,10 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
         print(f"Epoch {epoch+1}: Loss {val_loss}, Accuracy {val_acc}, Class Acc {acc}, IoU {iou}")
         torch.save(model.state_dict(),
                    datetime.now().strftime(f"./weights/model_%y_%m_%d_%H_%M_%S_epoch{epoch + 1}.pt"))
+    
+    # Final Testing Loop
+    test_loss, test_acc, test_ac, test_iou = validate(model, test_loader, criterion, n_class)
+    print(f"Final: Loss {test_loss}, Accuracy {test_acc}, Class Acc {test_acc}, IoU {test_iou}")
 
 
 if __name__ == '__main__':

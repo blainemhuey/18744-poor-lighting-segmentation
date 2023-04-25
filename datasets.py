@@ -22,7 +22,7 @@ class MFNetDataset(Dataset):
         assert split in ['train', 'val', 'test'], 'split must be "train"|"val"|"test"'
 
         with open(os.path.join(data_dir, split + '.txt'), 'r') as f:
-            self.names = sorted([name.strip() for name in f.readlines() if "flip" not in name])
+            self.names = sorted([name.strip() for name in f.readlines()])# if "flip" not in name])
 
         self.data_dir = data_dir
         self.split = split

@@ -17,7 +17,7 @@ class RandomShadow(object):
         self.masking_prob = masking_prob
 
     def __call__(self, image, label=None, **kwargs):
-        if np.random.rand(1) > self.masking_prob:
+        if np.random.rand(1) < self.masking_prob:
             choice_index = np.random.choice(np.arange(self.masks.shape[0]), 1, replace=False)[0]
             mask = self.masks[choice_index]
 
