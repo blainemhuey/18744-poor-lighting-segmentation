@@ -55,8 +55,8 @@ def eval(rgb_image, thermal_image):
             L=100,
         )
 
-        cv2.imshow("ref", (predictions == 1).astype(np.uint8) * 255)
-        cv2.imshow("refined", car_refined)
+        # cv2.imshow("ref", (predictions == 1).astype(np.uint8) * 255)
+        # cv2.imshow("refined", car_refined)
 
         car_refined = (car_refined > 128).astype(np.uint8)
         person_refined =  (person_refined > 128).astype(np.uint8) * 2
