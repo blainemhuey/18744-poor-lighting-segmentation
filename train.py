@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
+from torchmetrics import JaccardIndex
 
 from augmentations import RandomLight, RandomShadow, RandomFlare
 from datasets import MFNetDataset, HeatNetDataset, CustomDataset
@@ -54,10 +55,12 @@ def validate(model, loader, criterion, n_class):
     total_loss = 0
     total_correct = 0
     total_elements = 0
+    all_predictions = []
+    all_labels = []
     cf = np.zeros((n_class, n_class))
     with torch.no_grad():
         for it, (images, labels) in tqdm(enumerate(loader)):
-            images = images.cuda()
+            images = images.cuda()[:, :3, :, :]
             labels = labels.cuda()
 
             with torch.cuda.amp.autocast():
@@ -65,18 +68,24 @@ def validate(model, loader, criterion, n_class):
                 loss = criterion(logits, labels)
 
             total_loss += float(loss)
-            total_correct += int(((logits.argmax(1) == labels)*(labels != -1)).sum())
+            total_correct += int(((logits.argmax(1) == labels) * (labels != -1)).sum())
             total_elements += int(labels.numel() - (labels == -1).sum())
 
             predictions = logits.argmax(1)
+            all_predictions.append(predictions)
+            all_labels.append(labels)
+
             for gtcid in range(n_class):
                 for pcid in range(n_class):
-                    gt_mask      = labels == gtcid
-                    pred_mask    = predictions == pcid
+                    gt_mask = labels == gtcid
+                    pred_mask = predictions == pcid
                     intersection = gt_mask * pred_mask
                     cf[gtcid, pcid] += int(intersection.sum())
 
-    overall_acc, acc, IoU = calculate_result(cf)
+    jac = JaccardIndex("multiclass", num_classes=5, average=None)
+    IoU = jac(torch.cat(all_predictions, dim=0).cpu(), torch.cat(all_labels, dim=0).cpu()).numpy()
+
+    overall_acc, acc, _ = calculate_result(cf)
     val_loss = float(total_loss / len(loader))
     val_acc = 100 * total_correct / total_elements
     return val_loss, val_acc, acc, IoU
@@ -91,14 +100,14 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
         A.CLAHE(),
         A.FancyPCA(),
         A.ISONoise(),
-        # A.RGBShift(),
+        A.RGBShift(),
     ])
 
     train_albumentations = A.Compose([
         A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=10, p=0.5),
         A.HorizontalFlip(p=0.5),
         # A.OpticalDistortion(),
-        # A.MotionBlur(),
+        A.MotionBlur(),
         # A.GridDistortion(),
         # A.Blur(blur_limit=3),
         # A.GaussNoise(9, 0, p=0.5),
@@ -146,9 +155,9 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
                                        label_map=custom_label_map)
 
     # train_dataset_heatnet = torch.utils.data.Subset(train_dataset_heatnet, np.arange(1000))
-    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom)) #
-    val_dataset = ConcatDataset((val_dataset_custom, )) #val_dataset_mfnet
-    test_dataset = ConcatDataset((val_dataset_custom, ))
+    train_dataset = ConcatDataset((train_dataset_mfnet, train_dataset_custom))  #
+    val_dataset = ConcatDataset((val_dataset_custom,))  # val_dataset_mfnet
+    test_dataset = ConcatDataset((val_dataset_custom,))
 
     train_loader = DataLoader(
         dataset=train_dataset,
@@ -174,7 +183,7 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
 
     model = MFNetModified(
         rgb_ch=MFNetModified.DEFAULT_RGB_CH_SIZE,
-        inf_ch=np.rint(np.array(MFNetModified.DEFAULT_INF_CH_SIZE)//2*pipeline_scalars[1]).astype(int)*2,
+        inf_ch=np.rint(np.array(MFNetModified.DEFAULT_INF_CH_SIZE) // 2 * pipeline_scalars[1]).astype(int) * 2,
         n_class=n_class
     ).cuda()
     # model.load_state_dict(torch.load('./weights/model_23_03_28_11_06_59_epoch48.pt'))
@@ -187,10 +196,12 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
     for epoch in range(epochs):
         train(model, train_loader, criterion, optimizer, scheduler, scaler)
         val_loss, val_acc, acc, iou = validate(model, val_loader, criterion, n_class)
-        print(f"Epoch {epoch+1}: Loss {val_loss}, Accuracy {val_acc}, Class Acc {acc}, IoU {iou}")
+        print(f"Epoch {epoch + 1}: Loss {val_loss}, Accuracy {val_acc}, Class Acc {acc}, IoU {iou}")
         torch.save(model.state_dict(),
                    datetime.now().strftime(f"./weights/model_%y_%m_%d_%H_%M_%S_epoch{epoch + 1}.pt"))
-    
+        with open('validation.csv', 'a') as fd:
+            fd.write(f'{epoch},{val_loss},{val_acc}\n')
+
     # Final Testing Loop
     test_loss, test_acc, test_acs, test_iou = validate(model, test_loader, criterion, n_class)
     print(f"Final: Loss {test_loss}, Accuracy {test_acc}, Class Acc {test_acs}, IoU {test_iou}")

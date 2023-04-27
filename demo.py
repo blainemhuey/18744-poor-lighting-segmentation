@@ -1,6 +1,7 @@
 import torch
 import cv2
 import numpy as np
+import os
 
 import segmentation_refinement as refine
 
@@ -15,7 +16,7 @@ model = MFNetModified(
 model.load_state_dict(
     torch.load(
         "weights/model_23_04_25_12_50_58_epoch100.pt",
-        map_location=torch.device("cpu"),
+        map_location=torch.device("cuda"),
     ),
 )
 model.eval()
@@ -24,7 +25,7 @@ BACKGROUND_COLORMAP_VALUE = cv2.applyColorMap(
     np.array([0, 0, 0]).astype(np.uint8), cv2.COLORMAP_PARULA
 )[0][0]
 
-refiner = refine.Refiner(device="cpu")  #'cuda:0')
+refiner = refine.Refiner(device="cuda")  #'cuda:0')
 
 
 def eval(rgb_image, thermal_image):
@@ -45,14 +46,14 @@ def eval(rgb_image, thermal_image):
         car_refined = refiner.refine(
             combined_image[:, :, 1:].astype(np.uint8),
             (predictions == 1).astype(np.uint8) * 255,
-            fast=True,
-            L=100,
+            fast=False,
+            L=900,
         )
         person_refined = refiner.refine(
             combined_image[:, :, 1:].astype(np.uint8),
             (predictions == 2).astype(np.uint8) * 255,
-            fast=True,
-            L=100,
+            fast=False,
+            L=900,
         )
 
         # cv2.imshow("ref", (predictions == 1).astype(np.uint8) * 255)
@@ -73,6 +74,8 @@ def eval(rgb_image, thermal_image):
 
 def main():
     i = 995
+
+    # os.mkdir("datacapture/data/collection1/out/")
 
     while i < 3400:
         # Load images
@@ -95,6 +98,7 @@ def main():
 
         # Overlay on RGB image
         predictions_vis = cv2.addWeighted(rgb_image, 0.5, predictions_vis, 0.5, 0)
+        cv2.imwrite(f"datacapture/data/collection1/out/{i:06d}.jpg", predictions_vis)
         cv2.imshow("Output", predictions_vis)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
