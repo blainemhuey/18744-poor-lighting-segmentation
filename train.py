@@ -60,7 +60,7 @@ def validate(model, loader, criterion, n_class):
     cf = np.zeros((n_class, n_class))
     with torch.no_grad():
         for it, (images, labels) in tqdm(enumerate(loader)):
-            images = images.cuda()[:, :3, :, :]
+            images = images.cuda()
             labels = labels.cuda()
 
             with torch.cuda.amp.autocast():
@@ -177,7 +177,6 @@ def main(epochs=100, batch_size=8, n_class=5, pipeline_scalars=(1.0, 1.0)):
         dataset=test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        drop_last=True,
         num_workers=7,
     )
 
