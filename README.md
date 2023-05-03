@@ -1,6 +1,8 @@
 # 18744: Poor Lighting Segmentation
 Introduction to Autonomous Driving - Project Topic 7: Computer Vision in Poor Lighting
 
+![Example](images/demo2.png)
+
 ## Dataset Download
 
 ```commandline
@@ -59,15 +61,26 @@ Finally, copy the merged output folder contents into a folder named rgba/ in the
 
 ## How to Run
 
+In an environment with Python 3.7 installed, install all the dependency packages specified in the 'requirements.txt' file.
+
+```commandline
+pip install -r requirements.txt
+```
+
 ### How to Train
 
-After installing all of the pip dependencies specified in the requirements.txt file, training can be run using:
+After installing all of the pip dependencies specified in the requirements.txt file and downloading all of the datasets, training can be run using:
 ```commandline
 python train.py
 ```
+![Training Loss](images/training.png)
 
 ### How to Demo
 
+Using pretrained weights, one can run the demo program on our testing data, which is presumed to be unzipped in the datacapture/ directory
+
 ```commandline
-TODO create live demo script
+python demo.py
 ```
+
+![Demo Output Example](images/demo1.png)
