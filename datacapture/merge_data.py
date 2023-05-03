@@ -5,9 +5,9 @@ from pathlib import Path
 import multiprocessing
 
 
-FLIR_PATH = "flir/"
-RGB_PATH = "rgb/"
-OUTPUT_PATH = "merged/"
+FLIR_PATH = "data/collection1/flir/"
+RGB_PATH = "data/collection1/rgb/"
+OUTPUT_PATH = "data/collection1/merged/"
 
 def merge_images(flir_file):
     flir_name = flir_file.name

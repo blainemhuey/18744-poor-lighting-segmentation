@@ -1,7 +1,7 @@
 # 18744: Poor Lighting Segmentation
 Introduction to Autonomous Driving - Project Topic 7: Computer Vision in Poor Lighting
 
-![Example](images/demo2.png)
+![Example](images/demo1.png)
 
 ## Dataset Download
 
@@ -50,7 +50,7 @@ cd labels/
 unzip 'name of segmentation export file'
 ```
 
-Download our custom dataset and run the merge_data.py script in the datacapture folder
+Download our custom dataset (stored on Git LFS in the datacapture folder) and run the merge_data.py script in the datacapture folder
 ```commandline
 cd foler_with_custom_dataset
 mkdir merged
@@ -80,7 +80,11 @@ python train.py
 Using pretrained weights, one can run the demo program on our testing data, which is presumed to be unzipped in the datacapture/ directory
 
 ```commandline
+unzip collection1.zip
+mkdir data/collection1
+mv data/flir data/collection1
+mv data/rgb data/collection1
 python demo.py
 ```
 
-![Demo Output Example](images/demo1.png)
+![Demo Output Example](images/demo2.png)
