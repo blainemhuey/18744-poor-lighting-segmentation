@@ -7,15 +7,19 @@ import segmentation_refinement as refine
 
 from mfnet_spec import MFNetModified
 
-
+ir_size_scalar = 1.8  # Use 1.0 for all other trained models than the default
 model = MFNetModified(
     rgb_ch=MFNetModified.DEFAULT_RGB_CH_SIZE,
-    inf_ch=MFNetModified.DEFAULT_INF_CH_SIZE,
+    inf_ch=np.rint(np.array(MFNetModified.DEFAULT_INF_CH_SIZE) // 2 * 1.8).astype(int) * 2,
     n_class=5,
 )
 model.load_state_dict(
     torch.load(
-        "weights/model_23_04_25_12_50_58_epoch100.pt",
+        # "weights/demo/baseline.pt",
+        # "weights/demo/no_albums.pt",
+        # "weights/demo/no_custom.pt",
+        # "weights/demo/model_23_04_25_12_50_58_epoch100.pt",
+        "weights/demo/model_23_04_27_03_01_35_epoch47.pt",
         map_location=torch.device("cuda"),
     ),
 )
@@ -42,16 +46,21 @@ def eval(rgb_image, thermal_image):
         logits = model(norm_image)
         predictions = logits.argmax(1)
         predictions = predictions.permute(1, 2, 0).numpy().astype(np.uint8)
+        # return predictions
 
         car_refined = refiner.refine(
             combined_image[:, :, 1:].astype(np.uint8),
             (predictions == 1).astype(np.uint8) * 255,
+            # fast=True,
+            # L=100,
             fast=False,
             L=900,
         )
         person_refined = refiner.refine(
             combined_image[:, :, 1:].astype(np.uint8),
             (predictions == 2).astype(np.uint8) * 255,
+            # fast=True,
+            # L=100,
             fast=False,
             L=900,
         )
@@ -98,7 +107,7 @@ def main():
 
         # Overlay on RGB image
         predictions_vis = cv2.addWeighted(rgb_image, 0.5, predictions_vis, 0.5, 0)
-        cv2.imwrite(f"datacapture/data/collection1/out/{i:06d}.jpg", predictions_vis)
+        # cv2.imwrite(f"datacapture/data/collection1/out/{i:06d}.jpg", predictions_vis)
         cv2.imshow("Output", predictions_vis)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
